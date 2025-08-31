@@ -11,7 +11,11 @@ from webdriver_manager.chrome import ChromeDriverManager
 BASE_URL = "https://books.toscrape.com/catalogue/page-{page_number}.html"
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()))
+options = webdriver.ChromeOptions()
+options.add_argument("--headless=new")
+driver = webdriver.Chrome(
+    service=ChromeService(ChromeDriverManager().install()), options=options
+)
 
 
 def build_book(book_element):
@@ -38,10 +42,17 @@ def build_book(book_element):
 
 def scrape_books(driver, url):
     logger.info("Scraping url: %s", url)
-    driver.get(url)
-    total_count = 1000
-    books = driver.find_elements(By.XPATH, "//article[@class='product_pod']")
-    scraped_books = [build_book(book) for book in books]
+    try:
+        driver.get(url)
+        total_books_element = driver.find_element(
+            By.XPATH, "//form[@class='form-horizontal']//strong[1]"
+        )
+        total_count = int(total_books_element.text)
+        books = driver.find_elements(By.XPATH, "//article[@class='product_pod']")
+        scraped_books = [build_book(book) for book in books]
+    except Exception as e:
+        logger.error("Error processing url %s. Error: %s. Skipping.", url, str(e))
+        return [], 0
 
     return scraped_books, total_count
 
@@ -60,6 +71,8 @@ if __name__ == "__main__":
             sys.exit(1)
 
         number_of_pages = total_count // len(books)
+
+        logger.info("Looking for %s book in %s pages.", total_count, number_of_pages)
 
         # The first page was scraped in the step above, so we skip it
         for page_number in range(2, number_of_pages + 1):
