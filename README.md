@@ -26,7 +26,6 @@ Checkpoint 4 deliverable.
    uv sync
 
 4. Run the scraper
-````
 ```bash
   # this command you generate the books.csv file
   uv run scrape.py
